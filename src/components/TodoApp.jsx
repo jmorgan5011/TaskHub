@@ -1,12 +1,11 @@
-// components/TodoApp.js
-// Local Storage version - No Firebase required
+// components/TodoApp.jsx
+// Desktop optimized version - List view only
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Calendar, Flag, Grid3X3, List, Edit3, MessageSquare, Archive, Check, ChevronRight, ChevronDown, Menu, Tag, BarChart3, Filter, X, CheckSquare, Loader2 } from 'lucide-react';
+import { Plus, Calendar, Flag, Edit3, MessageSquare, Archive, Check, ChevronRight, ChevronDown, Menu, Tag, BarChart3, Filter, X, CheckSquare, Loader2 } from 'lucide-react';
 
 // Main TodoApp Component
 const TodoApp = () => {
-  const [currentView, setCurrentView] = useState('list');
   const [showArchived, setShowArchived] = useState(false);
   const [showReports, setShowReports] = useState(false);
   const [sortBy, setSortBy] = useState('smart');
@@ -14,7 +13,6 @@ const TodoApp = () => {
   const [editingSubtask, setEditingSubtask] = useState(null);
   const [editingDescription, setEditingDescription] = useState(null);
   const [expandedTasks, setExpandedTasks] = useState(new Set());
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [newSubtask, setNewSubtask] = useState('');
   const [addingSubtaskTo, setAddingSubtaskTo] = useState(null);
   const [newComment, setNewComment] = useState('');
@@ -290,7 +288,7 @@ const TodoApp = () => {
     const data = getReportData();
     
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-gray-800/60 backdrop-blur-sm rounded-lg p-4 border border-gray-700">
             <h3 className="text-sm font-medium text-gray-400 mb-2">Total Tasks</h3>
@@ -382,7 +380,7 @@ const TodoApp = () => {
     if (isListView && !isExpanded) {
       return (
         <div 
-          className={`bg-gray-800/60 backdrop-blur-sm rounded-lg p-3 md:p-4 landscape:p-2 landscape:md:p-3 border border-gray-700 hover:border-orange-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group ${isOverdue ? 'border-red-500/30' : ''} relative overflow-hidden`}
+          className={`bg-gray-800/60 backdrop-blur-sm rounded-lg p-4 border border-gray-700 hover:border-orange-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group ${isOverdue ? 'border-red-500/30' : ''} relative overflow-hidden`}
           onClick={() => toggleTaskExpansion(todo.id)}
         >
           <div className={`absolute left-0 top-0 bottom-0 w-1 ${
@@ -392,20 +390,20 @@ const TodoApp = () => {
             'bg-green-400'
           }`} />
           
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   updateTodo(todo.id, { status: todo.status === 'Done' ? 'To Do' : 'Done' });
                 }}
-                className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                className={`flex-shrink-0 w-3.5 h-3.5 rounded border-2 flex items-center justify-center transition-all ${
                   todo.status === 'Done'
                     ? 'bg-orange-500 border-orange-500' 
                     : 'border-gray-600 hover:border-orange-500'
                 }`}
               >
-                {todo.status === 'Done' && <Check className="w-4 h-4 text-white" />}
+                {todo.status === 'Done' && <Check className="w-2.5 h-2.5 text-white" />}
               </button>
               
               <div className="flex flex-col gap-1 min-w-0">
@@ -413,7 +411,7 @@ const TodoApp = () => {
                   {todo.title}
                 </h4>
                 <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs ${getCategoryColor(todo.category)}`}>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${getCategoryColor(todo.category)}`}>
                     {todo.category}
                   </span>
                   {todo.status === 'In Progress' && (
@@ -428,7 +426,7 @@ const TodoApp = () => {
               </div>
             </div>
             
-            <div className="flex items-center gap-2 md:gap-3 flex-wrap justify-end">
+            <div className="flex items-center gap-3 flex-wrap justify-end">
               {(todo.subtasks?.length > 0 || todo.comments?.length > 0) && (
                 <div className="flex items-center gap-2 text-xs text-gray-400">
                   {todo.subtasks?.length > 0 && (
@@ -453,17 +451,11 @@ const TodoApp = () => {
                 'bg-gray-700/50 text-gray-300 border border-gray-600'
               }`}>
                 <Calendar className="w-3 h-3" />
-                <span className="hidden sm:inline">
+                <span>
                   {isOverdue ? `${Math.abs(daysUntilDue)}d overdue` :
                    isToday ? 'Today' :
                    isTomorrow ? 'Tomorrow' :
                    new Date(todo.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </span>
-                <span className="sm:hidden">
-                  {isOverdue ? `-${Math.abs(daysUntilDue)}d` :
-                   isToday ? 'Today' :
-                   isTomorrow ? 'Tmrw' :
-                   new Date(todo.dueDate).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
                 </span>
               </div>
               
@@ -485,7 +477,7 @@ const TodoApp = () => {
         
         {isListView && (
           <div 
-            className="flex items-center justify-between gap-3 p-3 md:p-4 landscape:p-2 landscape:md:p-3 cursor-pointer hover:bg-gray-700/30 transition-colors border-b border-gray-700/30"
+            className="flex items-center justify-between gap-3 p-4 cursor-pointer hover:bg-gray-700/30 transition-colors border-b border-gray-700/30"
             onClick={() => toggleTaskExpansion(todo.id)}
           >
             <div className="flex items-center gap-3 flex-1">
@@ -494,13 +486,13 @@ const TodoApp = () => {
                   e.stopPropagation();
                   updateTodo(todo.id, { status: todo.status === 'Done' ? 'To Do' : 'Done' });
                 }}
-                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                className={`flex-shrink-0 w-3.5 h-3.5 rounded border-2 flex items-center justify-center transition-all ${
                   todo.status === 'Done'
                     ? 'bg-orange-500 border-orange-500' 
                     : 'border-gray-600 hover:border-orange-500'
                 }`}
               >
-                {todo.status === 'Done' && <Check className="w-4 h-4 text-white" />}
+                {todo.status === 'Done' && <Check className="w-2.5 h-2.5 text-white" />}
               </button>
               
               <h4 className={`font-semibold text-lg text-orange-300 ${todo.status === 'Done' ? 'line-through opacity-60' : ''}`}>
@@ -527,64 +519,7 @@ const TodoApp = () => {
           </div>
         )}
         
-        <div className={`p-3 md:p-4 landscape:p-2 landscape:md:p-3 ${isListView ? 'pt-0' : ''}`}>
-          {!isListView && (
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1">
-                {editingTask === todo.id ? (
-                  <input
-                    type="text"
-                    value={todo.title}
-                    onChange={(e) => updateTodo(todo.id, { title: e.target.value })}
-                    onBlur={() => setEditingTask(null)}
-                    onKeyPress={(e) => e.key === 'Enter' && setEditingTask(null)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-orange-300 text-lg font-semibold focus:outline-none focus:border-orange-500"
-                    autoFocus
-                  />
-                ) : (
-                  <h4 
-                    className="font-semibold text-lg text-orange-300 leading-tight cursor-pointer"
-                    onClick={() => setEditingTask(todo.id)}
-                  >
-                    {todo.title}
-                  </h4>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2 ml-2">
-                {((todo.subtasks?.length > 0) || (todo.comments?.length > 0)) && (
-                  <button
-                    onClick={() => toggleTaskExpansion(todo.id)}
-                    className="text-gray-400 hover:text-orange-400 transition-colors"
-                  >
-                    {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                  </button>
-                )}
-                <button
-                  onClick={() => setEditingTask(todo.id)}
-                  className="text-gray-400 hover:text-orange-400 transition-colors"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!isListView && (
-            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium mb-3 ${
-              isOverdue ? 'bg-red-500/20 text-red-200 border border-red-500/30' :
-              isToday ? 'bg-orange-500/20 text-orange-200 border border-orange-500/30' :
-              isTomorrow ? 'bg-yellow-500/20 text-yellow-200 border border-yellow-500/30' :
-              'bg-gray-700/50 text-gray-300 border border-gray-600'
-            }`}>
-              <Calendar className="w-3 h-3" />
-              {isOverdue ? `Overdue by ${Math.abs(daysUntilDue)} days` :
-               isToday ? 'Due today' :
-               isTomorrow ? 'Due tomorrow' :
-               new Date(todo.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </div>
-          )}
-
+        <div className={`p-4 ${isListView ? 'pt-0' : ''}`}>
           {editingDescription === todo.id ? (
             <textarea
               value={todo.description}
@@ -592,13 +527,13 @@ const TodoApp = () => {
               onBlur={() => setEditingDescription(null)}
               onKeyPress={(e) => e.key === 'Enter' && e.ctrlKey && setEditingDescription(null)}
               placeholder="Add a description..."
-              className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-orange-500 text-sm resize-none mb-4"
+              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-300 focus:outline-none focus:border-orange-500 text-sm resize-none mb-4"
               rows="2"
               autoFocus
             />
           ) : (
             <p 
-              className={`text-sm ${todo.description ? 'text-gray-500' : 'text-gray-600 italic'} mb-4 cursor-pointer hover:text-gray-400 transition-colors leading-relaxed`}
+              className={`text-sm ${todo.description ? 'text-gray-400' : 'text-gray-600 italic'} mb-4 cursor-pointer hover:text-gray-300 transition-colors leading-relaxed`}
               onClick={() => setEditingDescription(todo.id)}
             >
               {todo.description || 'Click to add description...'}
@@ -673,16 +608,16 @@ const TodoApp = () => {
                   <h5 className="text-sm font-medium text-gray-400 mb-2">Subtasks</h5>
                   <div className="space-y-1">
                     {todo.subtasks?.map(subtask => (
-                      <div key={subtask.id} className="flex items-center gap-2 text-sm group">
+                      <div key={subtask.id} className="flex items-center gap-2 text-sm group pl-1">
                         <button
                           onClick={() => toggleSubtask(todo.id, subtask.id)}
-                          className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+                          className={`flex-shrink-0 w-3.5 h-3.5 rounded border-2 flex items-center justify-center transition-all ${
                             subtask.completed 
                               ? 'bg-orange-500 border-orange-500' 
                               : 'border-gray-600 hover:border-orange-500'
                           }`}
                         >
-                          {subtask.completed && <Check className="w-3 h-3 text-white" />}
+                          {subtask.completed && <Check className="w-2.5 h-2.5 text-white" />}
                         </button>
                         {editingSubtask === subtask.id ? (
                           <input
@@ -691,7 +626,7 @@ const TodoApp = () => {
                             onChange={(e) => updateSubtask(todo.id, subtask.id, e.target.value)}
                             onBlur={() => setEditingSubtask(null)}
                             onKeyPress={(e) => e.key === 'Enter' && setEditingSubtask(null)}
-                            className="flex-1 bg-gray-700 border border-gray-600 rounded px-1 text-gray-300 focus:outline-none focus:border-orange-500"
+                            className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-orange-500"
                             autoFocus
                           />
                         ) : (
@@ -712,8 +647,8 @@ const TodoApp = () => {
                     ))}
                     
                     {addingSubtaskTo === todo.id ? (
-                      <div className="flex items-center gap-2 text-sm mt-2">
-                        <div className="w-4 h-4"></div>
+                      <div className="flex items-center gap-2 text-sm mt-2 pl-1">
+                        <div className="w-3.5 h-3.5"></div>
                         <input
                           type="text"
                           value={newSubtask}
@@ -725,7 +660,7 @@ const TodoApp = () => {
                             }
                           }}
                           placeholder="Add subtask..."
-                          className="flex-1 bg-gray-700 border border-gray-600 rounded px-1 text-gray-300 focus:outline-none focus:border-orange-500"
+                          className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-orange-500"
                           autoFocus
                         />
                         <button
@@ -747,7 +682,7 @@ const TodoApp = () => {
                     ) : todo.subtasks?.length > 0 && (
                       <button
                         onClick={() => setAddingSubtaskTo(todo.id)}
-                        className="flex items-center gap-2 text-sm text-gray-400 hover:text-orange-400 transition-colors mt-2"
+                        className="flex items-center gap-2 text-sm text-gray-400 hover:text-orange-400 transition-colors mt-2 pl-1"
                       >
                         <Plus className="w-4 h-4" />
                         Add subtask
@@ -767,10 +702,10 @@ const TodoApp = () => {
                   setExpandedTasks(new Set([...expandedTasks, todo.id]));
                 }
               }}
-              className="flex items-center gap-2 text-sm text-gray-400 hover:text-orange-400 transition-colors mb-3"
+              className="flex items-center gap-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1.5 rounded transition-colors mb-3 w-fit"
             >
               <Plus className="w-4 h-4" />
-              Add subtask
+              <span>Add subtask</span>
             </button>
           )}
 
@@ -804,36 +739,36 @@ const TodoApp = () => {
           ) : (
             <button
               onClick={() => setCommentingTask(todo.id)}
-              className="flex items-center gap-2 text-sm text-gray-400 hover:text-orange-400 transition-colors mb-3"
+              className="flex items-center gap-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1.5 rounded transition-colors mb-3 w-fit"
             >
               <MessageSquare className="w-4 h-4" />
-              {todo.comments?.length > 0 ? `${todo.comments.length} comments` : 'Add comment'}
+              <span>{todo.comments?.length > 0 ? `${todo.comments.length} comments` : 'Add comment'}</span>
             </button>
           )}
 
           <div className="flex gap-3 text-sm">
             <button
               onClick={() => setCommentingTask(todo.id)}
-              className="flex items-center gap-1 text-gray-400 hover:text-orange-400 transition-colors"
+              className="flex items-center gap-1 bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1.5 rounded transition-colors"
             >
               <MessageSquare className="w-4 h-4" />
-              {todo.comments?.length > 0 ? `${todo.comments.length}` : 'Comment'}
+              <span>{todo.comments?.length > 0 ? `${todo.comments.length} comments` : 'Comment'}</span>
             </button>
             
             <button
               onClick={() => updateTodo(todo.id, { archived: !todo.archived })}
-              className="flex items-center gap-1 text-gray-400 hover:text-orange-400 transition-colors"
+              className="flex items-center gap-1 bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1.5 rounded transition-colors"
             >
               <Archive className="w-4 h-4" />
-              {todo.archived ? 'Restore' : 'Archive'}
+              <span>{todo.archived ? 'Restore' : 'Archive'}</span>
             </button>
             
             <button
               onClick={() => deleteTodo(todo.id)}
-              className="flex items-center gap-1 text-gray-400 hover:text-red-400 transition-colors ml-auto"
+              className="flex items-center gap-1 bg-gray-700 hover:bg-red-600 text-gray-300 px-3 py-1.5 rounded transition-colors ml-auto"
             >
               <X className="w-4 h-4" />
-              Delete
+              <span>Delete</span>
             </button>
           </div>
         </div>
@@ -841,35 +776,8 @@ const TodoApp = () => {
     );
   };
 
-  const BoardView = () => {
-    const columns = ['To Do', 'In Progress', 'Done'];
-    
-    return (
-      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 h-full overflow-x-auto pb-4">
-        {columns.map(column => (
-          <div key={column} className="flex-shrink-0 w-full lg:w-80">
-            <div className="bg-gray-900/50 backdrop-blur-sm rounded-lg p-4 min-h-[300px] border border-gray-800">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-orange-400">{column}</h3>
-                <span className="bg-gray-800/60 text-orange-300 px-2 py-1 rounded text-sm border border-gray-700">
-                  {displayTodos.filter(todo => todo.status === column).length}
-                </span>
-              </div>
-              
-              <div className="space-y-3">
-                {displayTodos.filter(todo => todo.status === column).map(todo => (
-                  <TaskCard key={todo.id} todo={todo} />
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   const ListView = () => (
-    <div className="space-y-2">
+    <div className="space-y-3 max-w-4xl mx-auto">
       {displayTodos.map((todo) => (
         <TaskCard key={todo.id} todo={todo} isListView={true} />
       ))}
@@ -888,43 +796,33 @@ const TodoApp = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white p-3 md:p-6 landscape:p-2 landscape:md:p-4 landscape:lg:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        <header className="mb-8 landscape:mb-4">
-          <div className="flex items-center justify-between mb-6 landscape:mb-3 gap-2">
-            <div className="flex items-center gap-2 group cursor-pointer">
+        <header className="mb-8">
+          <div className="flex items-center justify-between mb-6 gap-4">
+            <div className="flex items-center gap-3 group cursor-pointer">
               <div className="relative">
                 <div className="absolute inset-0 bg-orange-500 rounded-lg blur-md opacity-0 group-hover:opacity-50 transition-opacity"></div>
                 <div className="relative bg-gradient-to-br from-orange-400 to-orange-600 p-2 rounded-lg shadow-lg transform transition-all group-hover:scale-110 group-hover:shadow-xl">
-                  <CheckSquare className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+                  <CheckSquare className="w-6 h-6 text-white" />
                 </div>
               </div>
-              <h1 className="text-2xl lg:text-3xl font-bold">
+              <h1 className="text-3xl font-bold">
                 <span className="bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent transition-all group-hover:from-orange-300 group-hover:to-orange-500">
                   TaskHub
                 </span>
               </h1>
-            </div>
-            
-            <div className="flex items-center gap-3">
               <span className="text-sm text-gray-400">(Local Storage Mode)</span>
-              
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden text-gray-400 hover:text-orange-400 transition-colors p-2"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
             </div>
             
-            <div className="hidden md:flex items-center gap-2 lg:gap-4 flex-wrap">
+            <div className="flex items-center gap-4 flex-wrap">
               {!showReports && (
-                <div className="flex items-center gap-1 lg:gap-2 bg-gray-800/60 px-2 lg:px-3 py-1.5 lg:py-2 rounded border border-gray-700 text-sm">
-                  <Filter className="w-3 h-3 lg:w-4 lg:h-4 text-gray-400" />
+                <div className="flex items-center gap-2 bg-gray-800/60 px-3 py-2 rounded border border-gray-700 text-sm">
+                  <Filter className="w-4 h-4 text-gray-400" />
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="bg-transparent text-gray-300 text-xs lg:text-sm focus:outline-none"
+                    className="bg-transparent text-gray-300 text-sm focus:outline-none"
                     title="Sort tasks by"
                   >
                     <option value="smart">Smart Sort</option>
@@ -937,120 +835,30 @@ const TodoApp = () => {
 
               <button
                 onClick={() => setShowReports(!showReports)}
-                className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 lg:py-2 rounded transition-all text-sm ${
-                  showReports ? 'bg-orange-600 text-white' : 'bg-gray-800/60 text-gray-400 hover:text-white'
+                className={`flex items-center gap-2 px-4 py-2 rounded transition-all text-sm ${
+                  showReports ? 'bg-orange-600 text-white' : 'bg-gray-800/60 text-gray-400 hover:text-white border border-gray-700'
                 }`}
                 title="Reports"
               >
-                <BarChart3 className="w-3 h-3 lg:w-4 lg:h-4" />
-                <span className="hidden lg:inline">Reports</span>
+                <BarChart3 className="w-4 h-4" />
+                <span>Reports</span>
               </button>
 
               <button
                 onClick={() => setShowArchived(!showArchived)}
-                className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 lg:py-2 rounded transition-all text-sm ${
-                  showArchived ? 'bg-orange-600 text-white' : 'bg-gray-800/60 text-gray-400 hover:text-white'
+                className={`flex items-center gap-2 px-4 py-2 rounded transition-all text-sm ${
+                  showArchived ? 'bg-orange-600 text-white' : 'bg-gray-800/60 text-gray-400 hover:text-white border border-gray-700'
                 }`}
                 title={showArchived ? 'Show Active' : 'Show Archived'}
               >
-                <Archive className="w-3 h-3 lg:w-4 lg:h-4" />
-                <span className="hidden lg:inline">{showArchived ? 'Active' : 'Archived'}</span>
+                <Archive className="w-4 h-4" />
+                <span>{showArchived ? 'Active' : 'Archived'}</span>
               </button>
-
-              {!showReports && (
-                <div className="flex bg-gray-800/60 backdrop-blur-sm rounded-lg p-1 border border-gray-700/50">
-                  <button
-                    onClick={() => setCurrentView('list')}
-                    className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 lg:py-2 rounded transition-all text-sm ${
-                      currentView === 'list' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-white'
-                    }`}
-                    title="List View"
-                  >
-                    <List className="w-3 h-3 lg:w-4 lg:h-4" />
-                    <span className="hidden lg:inline">List</span>
-                  </button>
-                  <button
-                    onClick={() => setCurrentView('board')}
-                    className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 lg:py-2 rounded transition-all text-sm ${
-                      currentView === 'board' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-white'
-                    }`}
-                    title="Board View"
-                  >
-                    <Grid3X3 className="w-3 h-3 lg:w-4 lg:h-4" />
-                    <span className="hidden lg:inline">Board</span>
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
-          {mobileMenuOpen && (
-            <div className="md:hidden mb-4 landscape:mb-2 bg-gray-800/60 backdrop-blur-sm rounded-lg p-3 landscape:p-2 border border-gray-700/50">
-              <div className="space-y-2">
-                {!showReports && (
-                  <div className="flex items-center gap-2 bg-gray-700 px-3 py-2 rounded">
-                    <Filter className="w-4 h-4 text-gray-400" />
-                    <select
-                      value={sortBy}
-                      onChange={(e) => { setSortBy(e.target.value); setMobileMenuOpen(false); }}
-                      className="flex-1 bg-transparent text-gray-300 text-sm focus:outline-none"
-                    >
-                      <option value="smart">Smart Sort</option>
-                      <option value="priority">Priority</option>
-                      <option value="dueDate">Due Date</option>
-                      <option value="status">Status</option>
-                    </select>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => { setShowReports(!showReports); setMobileMenuOpen(false); }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded transition-all ${
-                    showReports ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  Reports
-                </button>
-
-                <button
-                  onClick={() => { setShowArchived(!showArchived); setMobileMenuOpen(false); }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded transition-all ${
-                    showArchived ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <Archive className="w-4 h-4" />
-                  {showArchived ? 'Active' : 'Archived'}
-                </button>
-
-                {!showReports && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => { setCurrentView('list'); setMobileMenuOpen(false); }}
-                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded transition-all ${
-                        currentView === 'list' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-white'
-                      }`}
-                    >
-                      <List className="w-4 h-4" />
-                      List
-                    </button>
-                    <button
-                      onClick={() => { setCurrentView('board'); setMobileMenuOpen(false); }}
-                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded transition-all ${
-                        currentView === 'board' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-white'
-                      }`}
-                    >
-                      <Grid3X3 className="w-4 h-4" />
-                      Board
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
           {!showReports && (
-            <div className="bg-gray-800/60 backdrop-blur-sm rounded-lg p-4 landscape:p-3 border border-gray-700/50">
+            <div className="bg-gray-800/60 backdrop-blur-sm rounded-lg p-4 border border-gray-700/50 max-w-2xl mx-auto">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -1058,20 +866,20 @@ const TodoApp = () => {
                   onChange={(e) => setNewTodo(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addTodo()}
                   placeholder="Add a new task..."
-                  className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-orange-500"
+                  className="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-orange-500"
                   disabled={saving}
                 />
                 <button
                   onClick={addTodo}
                   disabled={saving}
-                  className="bg-orange-600 hover:bg-orange-700 disabled:bg-orange-800 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition-colors flex items-center gap-2"
+                  className="bg-orange-600 hover:bg-orange-700 disabled:bg-orange-800 disabled:cursor-not-allowed text-white font-medium py-2 px-6 rounded transition-colors flex items-center gap-2"
                 >
                   {saving ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <Plus className="w-5 h-5" />
                   )}
-                  <span className="hidden lg:inline">Add Task</span>
+                  <span>Add Task</span>
                 </button>
               </div>
             </div>
@@ -1081,8 +889,6 @@ const TodoApp = () => {
         <main>
           {showReports ? (
             <ReportsView />
-          ) : currentView === 'board' ? (
-            <BoardView />
           ) : (
             <ListView />
           )}
