@@ -4,6 +4,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Calendar, Flag, Edit3, MessageSquare, Archive, Check, ChevronRight, ChevronDown, Menu, Tag, BarChart3, Filter, X, Zap, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
+// TEMP ⌁ delete me later
+console.log('⚡ TodoApp VERSION 42', Date.now());
+
+
 // Toast Notification Component
 const Toast = ({ message, type = 'success', onClose }) => {
   useEffect(() => {
