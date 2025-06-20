@@ -1,4 +1,4 @@
-import TodoApp from './components/TodoApp.jsx';   // path must match the file name & folder
+import TodoApp from './components/TodoApp.jsx';
 
 function App() {
   return <TodoApp />;

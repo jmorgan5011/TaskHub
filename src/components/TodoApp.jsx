@@ -1,11 +1,10 @@
 // components/TodoApp.jsx
-// Rebranded version with purple theme and UX improvements
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Calendar, Flag, Edit3, MessageSquare, Archive, Check, ChevronRight, ChevronDown, Menu, Tag, BarChart3, Filter, X, Zap, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Plus, Calendar, Flag, Edit3, MessageSquare, Archive, Check, ChevronRight, ChevronDown, Menu, Tag, BarChart3, Filter, X, Zap, CheckCircle, AlertCircle, Loader2, ChevronUp, GripVertical, Download } from 'lucide-react';
 
 // TEMP ⌁ delete me later
-console.log('⚡ TodoApp VERSION 42', Date.now());
+console.log('⚡ TodoApp VERSION 1', Date.now());
 
 
 // Toast Notification Component
@@ -36,7 +35,6 @@ const TodoApp = () => {
   const [sortBy, setSortBy] = useState('smart');
   const [editingTask, setEditingTask] = useState(null);
   const [editingSubtask, setEditingSubtask] = useState(null);
-  const [editingDescription, setEditingDescription] = useState(null);
   const [expandedTasks, setExpandedTasks] = useState(new Set());
   const [newSubtask, setNewSubtask] = useState('');
   const [addingSubtaskTo, setAddingSubtaskTo] = useState(null);
@@ -81,14 +79,20 @@ const TodoApp = () => {
       try {
         const savedTodos = localStorage.getItem('taskhub_todos');
         if (savedTodos) {
-          setTodos(JSON.parse(savedTodos));
+          const parsed = JSON.parse(savedTodos);
+          // Ensure all todos have an order field
+          const todosWithOrder = parsed.map((todo, index) => ({
+            ...todo,
+            order: todo.order !== undefined ? todo.order : index
+          }));
+          setTodos(todosWithOrder);
         }
       } catch (error) {
         console.error('Error loading todos:', error);
       } finally {
         setLoading(false);
         // Hide storm loader after a delay
-        setTimeout(() => setShowStormLoader(false), 2000);
+        setTimeout(() => setShowStormLoader(false), 4000);
       }
     };
 
@@ -122,33 +126,64 @@ const TodoApp = () => {
   }, []);
 
   // Add todo
-  const addTodo = async () => {
-    if (newTodo.trim()) {
-      setSaving(true);
-      
-      const newTask = {
+const addTodo = async () => {
+  if (newTodo.trim()) {
+    setSaving(true);
+
+    let newTask;
+    if (sortBy === 'manual') {
+      // Manual sort: insert at top and bump others down
+      const updatedTodos = todos.map(todo => ({
+        ...todo,
+        order: (todo.order || 0) + 1
+      }));
+
+      newTask = {
         id: Date.now().toString(),
         title: newTodo,
         status: 'To Do',
         priority: 'Medium',
         category: 'Digital Marketing',
         dueDate: new Date().toISOString().split('T')[0],
-        description: '',
         archived: false,
         subtasks: [],
         comments: [],
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        order: 0
       };
 
-      setTodos(prevTodos => [newTask, ...prevTodos]);
-      setNewTodo('');
-      addToast('Task added successfully!');
-      
-      // Simulate save delay
-      setTimeout(() => setSaving(false), 300);
+      setTodos([newTask, ...updatedTodos]);
+    } else {
+      // Other sorts: append after highest order
+      const maxOrder = Math.max(...todos.map(t => t.order || 0), -1);
+
+      newTask = {
+        id: Date.now().toString(),
+        title: newTodo,
+        status: 'To Do',
+        priority: 'Medium',
+        category: 'Digital Marketing',
+        dueDate: new Date().toISOString().split('T')[0],
+        archived: false,
+        subtasks: [],
+        comments: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        order: maxOrder + 1
+      };
+
+      setTodos(prev => [newTask, ...prev]);
     }
-  };
+
+    setNewTodo('');
+    addToast('Task added successfully!');
+
+    // Simulate save delay
+    setTimeout(() => setSaving(false), 300);
+  }
+};
+
 
   // Update todo
   const updateTodo = (id, updates) => {
@@ -163,15 +198,45 @@ const TodoApp = () => {
     if (updates.status === 'Done') {
       // Trigger lightning animation
       setLightningTasks(prev => new Set([...prev, id]));
+      
+      // Archive the task after animation
       setTimeout(() => {
+        setTodos(prevTodos => 
+          prevTodos.map(todo => 
+            todo.id === id 
+              ? { ...todo, archived: true }
+              : todo
+          )
+        );
         setLightningTasks(prev => {
           const newSet = new Set(prev);
           newSet.delete(id);
           return newSet;
         });
+        addToast('Task completed and archived! ⚡', 'success');
       }, 1000);
+    }
+  };
+
+  // Move task up or down
+  const moveTask = (id, direction) => {
+    const activeTodos = todos.filter(todo => !todo.archived).sort((a, b) => (a.order || 0) - (b.order || 0));
+    const index = activeTodos.findIndex(t => t.id === id);
+    
+    if ((direction === 'up' && index > 0) || (direction === 'down' && index < activeTodos.length - 1)) {
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+      const newTodos = [...activeTodos];
+      [newTodos[index], newTodos[newIndex]] = [newTodos[newIndex], newTodos[index]];
       
-      addToast('Task completed! ⚡', 'success');
+      // Update order values
+      const updatedTodos = newTodos.map((todo, idx) => ({
+        ...todo,
+        order: idx
+      }));
+      
+      // Merge back with archived todos
+      const archivedTodos = todos.filter(todo => todo.archived);
+      setTodos([...updatedTodos, ...archivedTodos]);
     }
   };
 
@@ -284,6 +349,9 @@ const TodoApp = () => {
       const dateB = new Date(b.dueDate);
       
       switch (sortBy) {
+        case 'manual':
+          return (a.order || 0) - (b.order || 0);
+          
         case 'priority':
           return priorityWeight[b.priority] - priorityWeight[a.priority];
           
@@ -336,6 +404,78 @@ const TodoApp = () => {
   };
   
   const displayTodos = sortTodos(showArchived ? getArchivedTodos() : getActiveTodos());
+
+  // Export to CSV function
+  const exportToCSV = () => {
+    const activeTodos = getActiveTodos();
+    const archivedTodos = getArchivedTodos();
+    
+    // Helper function to escape CSV fields
+    const escapeCSV = (field) => {
+      if (field === null || field === undefined) return '';
+      const str = String(field);
+      // If field contains comma, quote, or newline, wrap in quotes and escape quotes
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+    
+    // CSV headers
+    const headers = ['Title', 'Status', 'Priority', 'Category', 'Due Date', 'Created At', 'Subtasks', 'Comments'];
+    
+    // Convert todos to CSV format
+    const todoToCSVRow = (todo) => {
+      const subtasks = todo.subtasks?.map(st => `${st.title}${st.completed ? ' ✓' : ''}`).join('; ') || '';
+      const comments = todo.comments?.map(c => c.text).join('; ') || '';
+      
+      return [
+        todo.title,
+        todo.status,
+        todo.priority,
+        todo.category,
+        new Date(todo.dueDate).toLocaleDateString(),
+        new Date(todo.createdAt).toLocaleDateString(),
+        subtasks,
+        comments
+      ].map(escapeCSV).join(',');
+    };
+    
+    // Build CSV content
+    let csvContent = '';
+    
+    // Active tasks section
+    csvContent += 'ACTIVE TASKS\n';
+    csvContent += headers.join(',') + '\n';
+    activeTodos.forEach(todo => {
+      csvContent += todoToCSVRow(todo) + '\n';
+    });
+    
+    // Add spacing
+    csvContent += '\n\n';
+    
+    // Archived tasks section
+    csvContent += 'ARCHIVED TASKS\n';
+    csvContent += headers.join(',') + '\n';
+    archivedTodos.forEach(todo => {
+      csvContent += todoToCSVRow(todo) + '\n';
+    });
+    
+    // Create download with BOM for Excel UTF-8 compatibility
+    const BOM = '\ufeff';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `TaskHub_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    addToast('Tasks exported successfully!', 'success');
+  };
 
   // Style helper functions
   const getPriorityColor = (priority) => {
@@ -503,7 +643,7 @@ const TodoApp = () => {
     );
   };
 
-  const TaskCard = ({ todo, isListView = false }) => {
+  const TaskCard = ({ todo, isListView = false, index = 0, totalCount = 0 }) => {
     const isExpanded = expandedTasks.has(todo.id);
     const isOverdue = new Date(todo.dueDate) < new Date() && todo.status !== 'Done';
     const daysUntilDue = Math.ceil((new Date(todo.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
@@ -514,10 +654,9 @@ const TodoApp = () => {
     if (isListView && !isExpanded) {
       return (
         <div 
-          className={`bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-purple-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group ${isOverdue ? 'border-red-500/30' : ''} relative overflow-hidden electricity-hover ${hasLightning ? 'lightning-strike' : ''}`}
+          className={`bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-purple-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group ${isOverdue ? 'border-red-500/30' : ''} relative overflow-hidden ${hasLightning ? 'lightning-strike' : ''}`}
           onClick={() => toggleTaskExpansion(todo.id)}
         >
-          <div className="electricity-particles"></div>
           <div className={`absolute left-0 top-0 bottom-0 w-1 ${
             todo.priority === 'Critical' ? 'bg-red-400' :
             todo.priority === 'High' ? 'bg-purple-400' :
@@ -527,6 +666,39 @@ const TodoApp = () => {
           
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 flex-1 min-w-0">
+              {sortBy === 'manual' && !showArchived && (
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveTask(todo.id, 'up');
+                    }}
+                    disabled={index === 0}
+                    className={`p-1 rounded transition-colors ${
+                      index === 0 
+                        ? 'text-gray-600 cursor-not-allowed' 
+                        : 'text-gray-400 hover:text-purple-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    <ChevronUp className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveTask(todo.id, 'down');
+                    }}
+                    disabled={index === totalCount - 1}
+                    className={`p-1 rounded transition-colors ${
+                      index === totalCount - 1 
+                        ? 'text-gray-600 cursor-not-allowed' 
+                        : 'text-gray-400 hover:text-purple-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+              
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -602,8 +774,7 @@ const TodoApp = () => {
     }
 
     return (
-      <div className={`bg-gray-800 rounded-lg border border-gray-700 hover:border-purple-500/50 hover:bg-gray-800/80 transition-all ${isOverdue ? 'border-red-500/30' : ''} relative overflow-hidden electricity-hover ${hasLightning ? 'lightning-strike' : ''}`}>
-        <div className="electricity-particles"></div>
+      <div className={`bg-gray-800 rounded-lg border border-gray-700 hover:border-purple-500/50 hover:bg-gray-800/80 transition-all ${isOverdue ? 'border-red-500/30' : ''} relative overflow-hidden ${hasLightning ? 'lightning-strike' : ''}`}>
         <div className={`absolute left-0 top-0 bottom-0 w-1 ${
           todo.priority === 'Critical' ? 'bg-red-400' :
           todo.priority === 'High' ? 'bg-purple-400' :
@@ -656,27 +827,6 @@ const TodoApp = () => {
         )}
         
         <div className={`p-4 ${isListView ? 'pt-0' : ''}`}>
-          {editingDescription === todo.id ? (
-            <textarea
-              value={todo.description || ''}
-              onChange={(e) => updateTodo(todo.id, { description: e.target.value })}
-              onBlur={() => setEditingDescription(null)}
-              onKeyPress={(e) => e.key === 'Enter' && e.ctrlKey && setEditingDescription(null)}
-              placeholder="Add a description..."
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100 focus:outline-none focus:border-purple-500 text-sm resize-none mb-4"
-              rows="2"
-              dir="ltr"
-              autoFocus
-            />
-          ) : (
-            <p 
-              className={`text-sm ${todo.description ? 'text-gray-400' : 'text-gray-600 italic'} mb-4 cursor-pointer hover:text-gray-300 transition-colors leading-relaxed`}
-              onClick={() => setEditingDescription(todo.id)}
-            >
-              {todo.description || 'Click to add description...'}
-            </p>
-          )}
-
           <div className="mb-4">
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${getCategoryColor(todo.category)}`}>
               <Tag className="w-3 h-3" />
@@ -770,7 +920,6 @@ const TodoApp = () => {
                             onBlur={() => setEditingSubtask(null)}
                             onKeyPress={(e) => e.key === 'Enter' && setEditingSubtask(null)}
                             className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-100 focus:outline-none focus:border-purple-500"
-                            dir="ltr"
                             autoFocus
                           />
                         ) : (
@@ -805,7 +954,6 @@ const TodoApp = () => {
                           }}
                           placeholder="Add subtask..."
                           className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-100 focus:outline-none focus:border-purple-500"
-                          dir="ltr"
                           autoFocus
                         />
                         <button
@@ -878,7 +1026,6 @@ const TodoApp = () => {
                 onBlur={() => setCommentingTask(null)}
                 placeholder="Add a comment..."
                 className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-gray-100 focus:outline-none focus:border-purple-500"
-                dir="ltr"
                 autoFocus
               />
             </div>
@@ -893,14 +1040,6 @@ const TodoApp = () => {
           )}
 
           <div className="flex gap-3 text-sm">
-            <button
-              onClick={() => setCommentingTask(todo.id)}
-              className="flex items-center gap-1 bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1.5 rounded transition-colors"
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span>{todo.comments?.length > 0 ? `${todo.comments.length} comments` : 'Comment'}</span>
-            </button>
-            
             <button
               onClick={() => updateTodo(todo.id, { archived: !todo.archived })}
               className="flex items-center gap-1 bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1.5 rounded transition-colors"
@@ -922,13 +1061,20 @@ const TodoApp = () => {
     );
   };
 
-  const ListView = () => (
-    <div className="space-y-3 max-w-4xl mx-auto">
-      {displayTodos.map((todo) => (
-        <TaskCard key={todo.id} todo={todo} isListView={true} />
-      ))}
-    </div>
-  );
+  const ListView = () => {
+    // Sort displayTodos by order when in manual sort mode
+    const sortedTodos = sortBy === 'manual' 
+      ? [...displayTodos].sort((a, b) => (a.order || 0) - (b.order || 0))
+      : displayTodos;
+      
+    return (
+      <div className="space-y-3 max-w-4xl mx-auto">
+        {sortedTodos.map((todo, index) => (
+          <TaskCard key={todo.id} todo={todo} isListView={true} index={index} totalCount={sortedTodos.length} />
+        ))}
+      </div>
+    );
+  };
 
   if (loading && !showStormLoader) {
     return (
@@ -1000,13 +1146,14 @@ const TodoApp = () => {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="bg-transparent text-gray-300 text-sm focus:outline-none"
+                    className="bg-transparent text-gray-100 text-sm focus:outline-none cursor-pointer"
                     title="Sort tasks by"
                   >
-                    <option value="smart">Smart Sort</option>
-                    <option value="priority">Priority</option>
-                    <option value="dueDate">Due Date</option>
-                    <option value="status">Status</option>
+                    <option value="smart" className="bg-gray-800">Smart Sort</option>
+                    <option value="manual" className="bg-gray-800">Manual Sort</option>
+                    <option value="priority" className="bg-gray-800">Priority</option>
+                    <option value="dueDate" className="bg-gray-800">Due Date</option>
+                    <option value="status" className="bg-gray-800">Status</option>
                   </select>
                 </div>
               )}
@@ -1020,6 +1167,15 @@ const TodoApp = () => {
               >
                 <BarChart3 className="w-4 h-4" />
                 <span>Reports</span>
+              </button>
+
+              <button
+                onClick={exportToCSV}
+                className="flex items-center gap-2 px-4 py-2 rounded transition-all text-sm bg-gray-800 text-gray-400 hover:text-white border border-gray-700"
+                title="Export to CSV"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export</span>
               </button>
 
               <button
@@ -1045,7 +1201,6 @@ const TodoApp = () => {
                   onKeyPress={(e) => e.key === 'Enter' && addTodo()}
                   placeholder="Add a new task..."
                   className="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 text-gray-100 placeholder-gray-400 focus:outline-none focus:border-purple-500"
-                  dir="ltr"
                   disabled={saving}
                 />
                 <button
@@ -1131,87 +1286,6 @@ const TodoApp = () => {
           box-shadow: 0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(139, 92, 246, 0.4);
         }
         
-        /* Electricity Hover Effect */
-        .electricity-hover {
-          position: relative;
-        }
-        
-        .electricity-particles {
-          position: absolute;
-          inset: 0;
-          opacity: 0;
-          transition: opacity 0.3s;
-          pointer-events: none;
-        }
-        
-        .electricity-hover:hover .electricity-particles {
-          opacity: 1;
-        }
-        
-        .electricity-particles::before,
-        .electricity-particles::after {
-          content: '';
-          position: absolute;
-          width: 2px;
-          height: 2px;
-          background: #8b5cf6;
-          border-radius: 50%;
-          animation: spark 2s linear infinite;
-        }
-        
-        .electricity-particles::before {
-          top: 10%;
-          left: 10%;
-          animation-delay: 0s;
-        }
-        
-        .electricity-particles::after {
-          bottom: 10%;
-          right: 10%;
-          animation-delay: 1s;
-        }
-        
-        @keyframes spark {
-          0% {
-            transform: translate(0) scale(0);
-            opacity: 1;
-          }
-          50% {
-            transform: translate(20px, -20px) scale(1);
-            opacity: 0.5;
-          }
-          100% {
-            transform: translate(40px, -40px) scale(0);
-            opacity: 0;
-          }
-        }
-        
-        /* Charging Progress Bar */
-        .charging-bar {
-          position: relative;
-          overflow: hidden;
-        }
-        
-        .charging-effect {
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255, 255, 255, 0.4),
-            transparent
-          );
-          animation: charge 2s linear infinite;
-        }
-        
-        @keyframes charge {
-          0% { left: -100%; }
-          100% { left: 100%; }
-        }
-        
         /* Storm Background */
         .storm-bg {
           background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0a 100%);
@@ -1269,39 +1343,30 @@ const TodoApp = () => {
           100% { width: 100%; }
         }
         
-        /* Particle System for Cards */
-        .electricity-hover::before {
-          content: '';
+        /* Charging Progress Bar */
+        .charging-bar {
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .charging-effect {
           position: absolute;
-          top: 50%;
-          left: 50%;
-          width: 4px;
-          height: 4px;
-          background: #6366f1;
-          border-radius: 50%;
-          opacity: 0;
-          transform: translate(-50%, -50%);
-          transition: opacity 0.3s;
-          pointer-events: none;
-          box-shadow: 
-            20px -20px 0 #8b5cf6,
-            -20px 20px 0 #6366f1,
-            -30px -10px 0 #8b5cf6,
-            30px 10px 0 #6366f1;
-          animation: particle-float 3s ease-in-out infinite;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.4),
+            transparent
+          );
+          animation: charge 2s linear infinite;
         }
         
-        .electricity-hover:hover::before {
-          opacity: 0.6;
-        }
-        
-        @keyframes particle-float {
-          0%, 100% {
-            transform: translate(-50%, -50%) scale(1);
-          }
-          50% {
-            transform: translate(-50%, -50%) scale(1.2);
-          }
+        @keyframes charge {
+          0% { left: -100%; }
+          100% { left: 100%; }
         }
       `}</style>
     </div>
