@@ -1,11 +1,8 @@
-// components/TodoApp.jsx
+// TaskHub - Task & Goal Management App
+// Clean version with proper structure
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Calendar, Flag, Edit3, MessageSquare, Archive, Check, ChevronRight, ChevronDown, Menu, Tag, BarChart3, Filter, X, Zap, CheckCircle, AlertCircle, Loader2, ChevronUp, GripVertical, Download } from 'lucide-react';
-
-// TEMP ⌁ delete me later
-console.log('⚡ TodoApp VERSION 1', Date.now());
-
+import React, { useState, useEffect } from 'react';
+import { Plus, Calendar, Flag, Edit3, MessageSquare, Archive, Check, ChevronRight, ChevronDown, Menu, Tag, BarChart3, Filter, X, Zap, CheckCircle, AlertCircle, Loader2, ChevronUp, GripVertical, Download, Target, TrendingUp, Trophy } from 'lucide-react';
 
 // Toast Notification Component
 const Toast = ({ message, type = 'success', onClose }) => {
@@ -32,6 +29,7 @@ const Toast = ({ message, type = 'success', onClose }) => {
 const TodoApp = () => {
   const [showArchived, setShowArchived] = useState(false);
   const [showReports, setShowReports] = useState(false);
+  const [currentView, setCurrentView] = useState('tasks'); // 'tasks' or 'goals'
   const [sortBy, setSortBy] = useState('smart');
   const [editingTask, setEditingTask] = useState(null);
   const [editingSubtask, setEditingSubtask] = useState(null);
@@ -43,7 +41,9 @@ const TodoApp = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [todos, setTodos] = useState([]);
+  const [goals, setGoals] = useState([]);
   const [newTodo, setNewTodo] = useState('');
+  const [newGoal, setNewGoal] = useState('');
   const [toasts, setToasts] = useState([]);
   const [deletedTodos, setDeletedTodos] = useState([]);
   const [lightningTasks, setLightningTasks] = useState(new Set());
@@ -51,6 +51,7 @@ const TodoApp = () => {
 
   const categories = ['Digital Marketing', 'SEO', 'Business Intelligence', 'Analytics', 'Websites', 'Admin', 'Misc'];
   const priorities = ['Low', 'Medium', 'High', 'Critical'];
+  const goalTimeframes = ['This Month', 'This Quarter', 'This Year', 'Long-term'];
 
   // Add Google Fonts
   useEffect(() => {
@@ -73,38 +74,76 @@ const TodoApp = () => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
 
-  // Load todos from localStorage on mount
+  // Load todos and goals from memory (simulated localStorage) on mount
   useEffect(() => {
-    const loadTodos = () => {
+    const loadData = () => {
       try {
-        const savedTodos = localStorage.getItem('taskhub_todos');
-        if (savedTodos) {
-          const parsed = JSON.parse(savedTodos);
-          // Ensure all todos have an order field
-          const todosWithOrder = parsed.map((todo, index) => ({
-            ...todo,
-            order: todo.order !== undefined ? todo.order : index
-          }));
-          setTodos(todosWithOrder);
-        }
+        // Simulate loading with some sample data
+        const sampleTodos = [
+          {
+            id: '1',
+            title: 'Launch new marketing campaign',
+            status: 'In Progress',
+            priority: 'High',
+            category: 'Digital Marketing',
+            dueDate: new Date().toISOString().split('T')[0],
+            archived: false,
+            subtasks: [
+              { id: 1, title: 'Design banner ads', completed: true },
+              { id: 2, title: 'Write ad copy', completed: false }
+            ],
+            comments: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            order: 0
+          },
+          {
+            id: '2',
+            title: 'Optimize website SEO',
+            status: 'To Do',
+            priority: 'Medium',
+            category: 'SEO',
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            archived: false,
+            subtasks: [],
+            comments: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            order: 1
+          }
+        ];
+        
+        const sampleGoals = [
+          {
+            id: '1',
+            title: 'Increase website traffic by 50%',
+            category: 'Digital Marketing',
+            timeframe: 'This Quarter',
+            progress: 35,
+            milestones: [
+              { id: 1, title: 'Implement SEO improvements', completed: true },
+              { id: 2, title: 'Launch social media campaign', completed: false },
+              { id: 3, title: 'Start content marketing', completed: false }
+            ],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            completed: false
+          }
+        ];
+        
+        setTodos(sampleTodos);
+        setGoals(sampleGoals);
       } catch (error) {
-        console.error('Error loading todos:', error);
+        console.error('Error loading data:', error);
       } finally {
         setLoading(false);
         // Hide storm loader after a delay
-        setTimeout(() => setShowStormLoader(false), 4000);
+        setTimeout(() => setShowStormLoader(false), 5000);
       }
     };
 
-    loadTodos();
+    loadData();
   }, []);
-
-  // Save todos to localStorage whenever they change
-  useEffect(() => {
-    if (!loading) {
-      localStorage.setItem('taskhub_todos', JSON.stringify(todos));
-    }
-  }, [todos, loading]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -126,64 +165,88 @@ const TodoApp = () => {
   }, []);
 
   // Add todo
-const addTodo = async () => {
-  if (newTodo.trim()) {
-    setSaving(true);
+  const addTodo = async () => {
+    if (newTodo.trim()) {
+      setSaving(true);
 
-    let newTask;
-    if (sortBy === 'manual') {
-      // Manual sort: insert at top and bump others down
-      const updatedTodos = todos.map(todo => ({
-        ...todo,
-        order: (todo.order || 0) + 1
-      }));
+      let newTask;
+      if (sortBy === 'manual') {
+        // Manual sort: insert at top and bump others down
+        const updatedTodos = todos.map(todo => ({
+          ...todo,
+          order: (todo.order || 0) + 1
+        }));
 
-      newTask = {
-        id: Date.now().toString(),
-        title: newTodo,
-        status: 'To Do',
-        priority: 'Medium',
-        category: 'Digital Marketing',
-        dueDate: new Date().toISOString().split('T')[0],
-        archived: false,
-        subtasks: [],
-        comments: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        order: 0
-      };
+        newTask = {
+          id: Date.now().toString(),
+          title: newTodo,
+          status: 'To Do',
+          priority: 'Medium',
+          category: 'Digital Marketing',
+          dueDate: new Date().toISOString().split('T')[0],
+          archived: false,
+          subtasks: [],
+          comments: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          order: 0
+        };
 
-      setTodos([newTask, ...updatedTodos]);
-    } else {
-      // Other sorts: append after highest order
-      const maxOrder = Math.max(...todos.map(t => t.order || 0), -1);
+        setTodos([newTask, ...updatedTodos]);
+      } else {
+        // Other sorts: append after highest order
+        const maxOrder = Math.max(...todos.map(t => t.order || 0), -1);
 
-      newTask = {
-        id: Date.now().toString(),
-        title: newTodo,
-        status: 'To Do',
-        priority: 'Medium',
-        category: 'Digital Marketing',
-        dueDate: new Date().toISOString().split('T')[0],
-        archived: false,
-        subtasks: [],
-        comments: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        order: maxOrder + 1
-      };
+        newTask = {
+          id: Date.now().toString(),
+          title: newTodo,
+          status: 'To Do',
+          priority: 'Medium',
+          category: 'Digital Marketing',
+          dueDate: new Date().toISOString().split('T')[0],
+          archived: false,
+          subtasks: [],
+          comments: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          order: maxOrder + 1
+        };
 
-      setTodos(prev => [newTask, ...prev]);
+        setTodos(prev => [newTask, ...prev]);
+      }
+
+      setNewTodo('');
+      addToast('Task added successfully!');
+
+      // Simulate save delay
+      setTimeout(() => setSaving(false), 300);
     }
+  };
 
-    setNewTodo('');
-    addToast('Task added successfully!');
+  // Add goal
+  const addGoal = async () => {
+    if (newGoal.trim()) {
+      setSaving(true);
+      
+      const goal = {
+        id: Date.now().toString(),
+        title: newGoal,
+        category: 'Digital Marketing',
+        timeframe: 'This Quarter',
+        progress: 0,
+        milestones: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        completed: false
+      };
 
-    // Simulate save delay
-    setTimeout(() => setSaving(false), 300);
-  }
-};
-
+      setGoals(prev => [goal, ...prev]);
+      setNewGoal('');
+      addToast('Goal added successfully! 🎯');
+      
+      setTimeout(() => setSaving(false), 300);
+    }
+  };
 
   // Update todo
   const updateTodo = (id, updates) => {
@@ -215,6 +278,22 @@ const addTodo = async () => {
         });
         addToast('Task completed and archived! ⚡', 'success');
       }, 1000);
+    }
+  };
+
+  // Update goal
+  const updateGoal = (id, updates) => {
+    setGoals(prevGoals => 
+      prevGoals.map(goal => 
+        goal.id === id 
+          ? { ...goal, ...updates, updatedAt: new Date().toISOString() }
+          : goal
+      )
+    );
+    
+    if (updates.progress === 100 && !goals.find(g => g.id === id)?.completed) {
+      addToast('Goal achieved! 🎉🏆', 'success');
+      updateGoal(id, { completed: true });
     }
   };
 
@@ -270,7 +349,13 @@ const addTodo = async () => {
     }]);
   };
 
-  // Helper functions remain the same...
+  // Delete goal
+  const deleteGoal = (id) => {
+    setGoals(prevGoals => prevGoals.filter(goal => goal.id !== id));
+    addToast('Goal removed');
+  };
+
+  // Helper functions for subtasks and comments
   const addSubtask = (taskId) => {
     if (newSubtask.trim()) {
       const task = todos.find(t => t.id === taskId);
@@ -333,6 +418,43 @@ const addTodo = async () => {
       newExpanded.add(taskId);
     }
     setExpandedTasks(newExpanded);
+  };
+
+  // Add milestone to goal
+  const addMilestone = (goalId, milestone) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    
+    const newMilestone = {
+      id: Date.now(),
+      title: milestone,
+      completed: false,
+      createdAt: new Date().toISOString()
+    };
+    
+    updateGoal(goalId, {
+      milestones: [...(goal.milestones || []), newMilestone]
+    });
+  };
+
+  // Toggle milestone
+  const toggleMilestone = (goalId, milestoneId) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    
+    const updatedMilestones = goal.milestones.map(m =>
+      m.id === milestoneId ? { ...m, completed: !m.completed } : m
+    );
+    
+    updateGoal(goalId, { milestones: updatedMilestones });
+    
+    // Update progress based on milestones
+    const completedCount = updatedMilestones.filter(m => m.completed).length;
+    const progress = updatedMilestones.length > 0 
+      ? Math.round((completedCount / updatedMilestones.length) * 100)
+      : 0;
+    
+    updateGoal(goalId, { progress });
   };
 
   // Filtering and sorting functions
@@ -461,9 +583,8 @@ const addTodo = async () => {
       csvContent += todoToCSVRow(todo) + '\n';
     });
     
-    // Create download with BOM for Excel UTF-8 compatibility
-    const BOM = '\ufeff';
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Create download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
@@ -503,23 +624,43 @@ const addTodo = async () => {
 
   // Storm Loader Component
   const StormLoader = () => (
-    <div className="fixed inset-0 bg-zinc-900 z-50 flex items-center justify-center storm-bg">
-      <div className="text-center">
+    <div className="fixed inset-0 bg-zinc-900 z-50 flex items-center justify-center storm-bg overflow-hidden storm-loader-container">
+      {/* Background lightning effects */}
+      <div className="absolute inset-0">
+        <div className="lightning-bg lightning-bg-1"></div>
+        <div className="lightning-bg lightning-bg-2"></div>
+        <div className="lightning-bg lightning-bg-3"></div>
+        <div className="lightning-bg lightning-bg-4"></div>
+        <div className="lightning-bg lightning-bg-5"></div>
+        <div className="random-flash random-flash-1"></div>
+        <div className="random-flash random-flash-2"></div>
+        <div className="random-flash random-flash-3"></div>
+      </div>
+      
+      {/* Storm clouds effect */}
+      <div className="absolute inset-0 storm-clouds"></div>
+      
+      {/* Rain effect */}
+      <div className="rain-container">
+        <div className="rain"></div>
+      </div>
+      
+      <div className="text-center relative z-10">
         <div className="relative">
           <div className="lightning-container">
             <div className="lightning lightning-1"></div>
             <div className="lightning lightning-2"></div>
             <div className="lightning lightning-3"></div>
           </div>
-          <div className="w-32 h-32 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse relative z-10">
+          <div className="w-32 h-32 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse relative z-10 shadow-2xl storm-icon">
             <Zap className="w-16 h-16 text-white animate-bounce" />
           </div>
         </div>
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent mb-2">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent mb-2 relative">
           Charging TaskHub...
         </h2>
-        <div className="w-64 h-2 bg-gray-700 rounded-full overflow-hidden mx-auto">
-          <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full lightning-progress"></div>
+        <div className="w-64 h-2 bg-gray-700 rounded-full overflow-hidden mx-auto shadow-inner">
+          <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full lightning-progress shadow-lg"></div>
         </div>
       </div>
     </div>
@@ -556,7 +697,7 @@ const addTodo = async () => {
     };
   };
 
-  // View Components
+  // Reports View Component
   const ReportsView = () => {
     const data = getReportData();
     
@@ -639,6 +780,305 @@ const addTodo = async () => {
             </div>
           </div>
         </div>
+      </div>
+    );
+  };
+
+  // Goal Card Component
+  const GoalCard = ({ goal }) => {
+    const [showMilestones, setShowMilestones] = useState(false);
+    const [newMilestone, setNewMilestone] = useState('');
+    const [editingGoal, setEditingGoal] = useState(false);
+    
+    return (
+      <div className={`bg-gray-800 rounded-lg border border-gray-700 hover:border-purple-500/50 transition-all relative overflow-hidden ${goal.completed ? 'opacity-75' : ''}`}>
+        <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+          goal.completed ? 'bg-green-400' :
+          goal.progress >= 80 ? 'bg-purple-400' :
+          goal.progress >= 60 ? 'bg-blue-400' :
+          goal.progress >= 40 ? 'bg-yellow-400' :
+          goal.progress >= 20 ? 'bg-orange-400' :
+          'bg-gray-400'
+        }`} />
+        
+        <div className="p-4">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              {editingGoal ? (
+                <input
+                  type="text"
+                  value={goal.title}
+                  onChange={(e) => updateGoal(goal.id, { title: e.target.value })}
+                  onBlur={() => setEditingGoal(false)}
+                  onKeyPress={(e) => e.key === 'Enter' && setEditingGoal(false)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1 text-gray-100 focus:outline-none focus:border-purple-500"
+                  autoFocus
+                />
+              ) : (
+                <h3 
+                  className={`text-lg font-semibold text-gray-100 cursor-pointer hover:text-purple-300 transition-colors ${goal.completed ? 'line-through' : ''}`}
+                  onClick={() => setEditingGoal(true)}
+                >
+                  {goal.title}
+                </h3>
+              )}
+              <div className="flex items-center gap-2 mt-2">
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${getCategoryColor(goal.category)}`}>
+                  <Tag className="w-3 h-3" />
+                  {goal.category}
+                </span>
+                <span className="text-xs text-gray-400">{goal.timeframe}</span>
+              </div>
+            </div>
+            {goal.completed && (
+              <Trophy className="w-5 h-5 text-yellow-400" />
+            )}
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+              <span>Progress</span>
+              <span>{goal.progress}%</span>
+            </div>
+            <div className="bg-gray-700 rounded-full h-3 overflow-hidden">
+              <div 
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500 relative"
+                style={{ width: `${goal.progress}%` }}
+              >
+                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Milestones */}
+          <div className="space-y-2">
+            <button
+              onClick={() => setShowMilestones(!showMilestones)}
+              className="flex items-center gap-2 text-sm text-gray-400 hover:text-purple-400 transition-colors"
+            >
+              <ChevronRight className={`w-4 h-4 transform transition-transform ${showMilestones ? 'rotate-90' : ''}`} />
+              <span>Milestones ({goal.milestones?.filter(m => m.completed).length || 0}/{goal.milestones?.length || 0})</span>
+            </button>
+            
+            {showMilestones && (
+              <div className="ml-6 space-y-1">
+                {goal.milestones?.map(milestone => (
+                  <div key={milestone.id} className="flex items-center gap-2 text-sm">
+                    <button
+                      onClick={() => toggleMilestone(goal.id, milestone.id)}
+                      className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center transition-all ${
+                        milestone.completed 
+                          ? 'bg-purple-600 border-purple-600' 
+                          : 'border-gray-600 hover:border-purple-500'
+                      }`}
+                    >
+                      {milestone.completed && <Check className="w-2.5 h-2.5 text-white" />}
+                    </button>
+                    <span className={`${milestone.completed ? 'line-through text-gray-500' : 'text-gray-100'}`}>
+                      {milestone.title}
+                    </span>
+                  </div>
+                ))}
+                
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    type="text"
+                    value={newMilestone}
+                    onChange={(e) => setNewMilestone(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && newMilestone.trim()) {
+                        addMilestone(goal.id, newMilestone);
+                        setNewMilestone('');
+                      }
+                    }}
+                    placeholder="Add milestone..."
+                    className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-gray-100 focus:outline-none focus:border-purple-500"
+                  />
+                  <button
+                    onClick={() => {
+                      if (newMilestone.trim()) {
+                        addMilestone(goal.id, newMilestone);
+                        setNewMilestone('');
+                      }
+                    }}
+                    className="text-purple-400 hover:text-purple-300"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Goal Actions */}
+          <div className="flex items-center gap-3 mt-4">
+            <select
+              value={goal.category}
+              onChange={(e) => updateGoal(goal.id, { category: e.target.value })}
+              className="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-100 focus:outline-none focus:border-purple-500"
+            >
+              {categories.map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+            
+            <select
+              value={goal.timeframe}
+              onChange={(e) => updateGoal(goal.id, { timeframe: e.target.value })}
+              className="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-100 focus:outline-none focus:border-purple-500"
+            >
+              {goalTimeframes.map(timeframe => (
+                <option key={timeframe} value={timeframe}>{timeframe}</option>
+              ))}
+            </select>
+            
+            <button
+              onClick={() => deleteGoal(goal.id)}
+              className="ml-auto text-gray-400 hover:text-red-400 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Goals View
+  const GoalsView = () => {
+    const activeGoals = goals.filter(g => !g.completed);
+    const completedGoals = goals.filter(g => g.completed);
+    
+    // Calculate overall progress
+    const overallProgress = goals.length > 0 
+      ? Math.round(
+          goals.reduce((sum, goal) => sum + (goal.completed ? 100 : goal.progress), 0) / goals.length
+        )
+      : 0;
+    
+    return (
+      <div className="space-y-6 max-w-4xl mx-auto">
+        {/* Overall Progress */}
+        {(activeGoals.length > 0 || completedGoals.length > 0) && (
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-100 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-purple-400" />
+                Overall Goals Progress
+              </h2>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
+                  {overallProgress}%
+                </span>
+                {overallProgress === 100 && goals.length > 0 && (
+                  <Trophy className="w-6 h-6 text-yellow-400 animate-bounce" />
+                )}
+              </div>
+            </div>
+            <div className="bg-gray-700 rounded-full h-4 overflow-hidden mb-6">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 relative ${
+                  overallProgress === 100 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+                  overallProgress >= 80 ? 'bg-gradient-to-r from-indigo-500 to-purple-500' :
+                  overallProgress >= 60 ? 'bg-gradient-to-r from-blue-500 to-indigo-500' :
+                  overallProgress >= 40 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
+                  overallProgress >= 20 ? 'bg-gradient-to-r from-orange-500 to-red-500' :
+                  'bg-gradient-to-r from-gray-500 to-gray-600'
+                }`}
+                style={{ width: `${overallProgress}%` }}
+              >
+                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                <div className="charging-effect"></div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="text-center p-3 bg-gray-700/30 rounded-lg">
+                <p className="text-gray-400 mb-1">Active Goals</p>
+                <p className="text-2xl font-bold text-purple-400">{activeGoals.length}</p>
+              </div>
+              <div className="text-center p-3 bg-gray-700/30 rounded-lg">
+                <p className="text-gray-400 mb-1">Completed</p>
+                <p className="text-2xl font-bold text-green-400">{completedGoals.length}</p>
+              </div>
+              <div className="text-center p-3 bg-gray-700/30 rounded-lg">
+                <p className="text-gray-400 mb-1">Total Milestones</p>
+                <p className="text-2xl font-bold text-blue-400">
+                  {goals.reduce((sum, goal) => sum + (goal.milestones?.length || 0), 0)}
+                </p>
+              </div>
+              <div className="text-center p-3 bg-gray-700/30 rounded-lg">
+                <p className="text-gray-400 mb-1">Completion Rate</p>
+                <p className="text-2xl font-bold text-yellow-400">
+                  {goals.length > 0 ? Math.round((completedGoals.length / goals.length) * 100) : 0}%
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Goal Input */}
+        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newGoal}
+              onChange={(e) => setNewGoal(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && addGoal()}
+              placeholder="Add a new goal..."
+              className="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 text-gray-100 placeholder-gray-400 focus:outline-none focus:border-purple-500"
+              disabled={saving}
+            />
+            <button
+              onClick={addGoal}
+              disabled={saving}
+              className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white font-medium py-2 px-6 rounded transition-colors flex items-center gap-2"
+            >
+              {saving ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Target className="w-5 h-5" />
+              )}
+              <span>Add Goal</span>
+            </button>
+          </div>
+        </div>
+        
+        {/* Active Goals */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-gray-100 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-purple-400" />
+            Active Goals ({activeGoals.length})
+          </h2>
+          {activeGoals.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {activeGoals.map(goal => (
+                <GoalCard key={goal.id} goal={goal} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-8">
+              <Target className="w-12 h-12 mx-auto mb-3 text-gray-600" />
+              No active goals. Set your first goal above!
+            </p>
+          )}
+        </div>
+        
+        {/* Completed Goals */}
+        {completedGoals.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-gray-100 flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-yellow-400" />
+              Achieved Goals ({completedGoals.length})
+            </h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              {completedGoals.map(goal => (
+                <GoalCard key={goal.id} goal={goal} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -1136,11 +1576,41 @@ const addTodo = async () => {
                   TaskHub
                 </span>
               </h1>
-              <span className="text-sm text-gray-400">(Local Storage Mode)</span>
+              <span className="text-sm text-gray-400">(Memory Mode)</span>
             </div>
             
             <div className="flex items-center gap-4 flex-wrap">
-              {!showReports && (
+              {/* View Toggle */}
+              <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700">
+                <button
+                  onClick={() => {
+                    setCurrentView('tasks');
+                    setShowReports(false);
+                  }}
+                  className={`px-3 py-1.5 rounded text-sm transition-all ${
+                    currentView === 'tasks' 
+                      ? 'bg-purple-600 text-white' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Tasks
+                </button>
+                <button
+                  onClick={() => {
+                    setCurrentView('goals');
+                    setShowReports(false);
+                  }}
+                  className={`px-3 py-1.5 rounded text-sm transition-all ${
+                    currentView === 'goals' 
+                      ? 'bg-purple-600 text-white' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Goals
+                </button>
+              </div>
+              
+              {currentView === 'tasks' && !showReports && (
                 <div className="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700 text-sm">
                   <Filter className="w-4 h-4 text-gray-400" />
                   <select
@@ -1158,16 +1628,18 @@ const addTodo = async () => {
                 </div>
               )}
 
-              <button
-                onClick={() => setShowReports(!showReports)}
-                className={`flex items-center gap-2 px-4 py-2 rounded transition-all text-sm ${
-                  showReports ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'
-                }`}
-                title="Reports"
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span>Reports</span>
-              </button>
+              {currentView === 'tasks' && (
+                <button
+                  onClick={() => setShowReports(!showReports)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded transition-all text-sm ${
+                    showReports ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'
+                  }`}
+                  title="Reports"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span>Reports</span>
+                </button>
+              )}
 
               <button
                 onClick={exportToCSV}
@@ -1178,20 +1650,22 @@ const addTodo = async () => {
                 <span>Export</span>
               </button>
 
-              <button
-                onClick={() => setShowArchived(!showArchived)}
-                className={`flex items-center gap-2 px-4 py-2 rounded transition-all text-sm ${
-                  showArchived ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'
-                }`}
-                title={showArchived ? 'Show Active' : 'Show Archived'}
-              >
-                <Archive className="w-4 h-4" />
-                <span>{showArchived ? 'Active' : 'Archived'}</span>
-              </button>
+              {currentView === 'tasks' && (
+                <button
+                  onClick={() => setShowArchived(!showArchived)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded transition-all text-sm ${
+                    showArchived ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'
+                  }`}
+                  title={showArchived ? 'Show Active' : 'Show Archived'}
+                >
+                  <Archive className="w-4 h-4" />
+                  <span>{showArchived ? 'Active' : 'Archived'}</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {!showReports && (
+          {currentView === 'tasks' && !showReports && (
             <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 max-w-2xl mx-auto">
               <div className="flex gap-2">
                 <input
@@ -1224,36 +1698,41 @@ const addTodo = async () => {
         </header>
 
         <main>
-          {showReports ? (
-            <ReportsView />
-          ) : (
-            <ListView />
-          )}
-          
-          {!loading && displayTodos.length === 0 && (
-            <div className="text-center py-12 max-w-md mx-auto">
-              <div className="bg-gray-800 rounded-lg p-8 border border-gray-700">
-                <div className="w-20 h-20 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                  <Zap className="w-10 h-10 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-100 mb-2">
-                  {showArchived ? 'No archived tasks' : 'Welcome to TaskHub!'}
-                </h3>
-                <p className="text-gray-400 mb-4">
-                  {showArchived 
-                    ? 'Your archived tasks will appear here' 
-                    : 'Start organizing your work by creating your first task above'}
-                </p>
-                {!showArchived && (
-                  <button
-                    onClick={() => document.querySelector('input[placeholder="Add a new task..."]')?.focus()}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded transition-colors"
-                  >
-                    Create First Task
-                  </button>
+          {currentView === 'tasks' ? (
+            showReports ? (
+              <ReportsView />
+            ) : (
+              <>
+                <ListView />
+                {!loading && displayTodos.length === 0 && (
+                  <div className="text-center py-12 max-w-md mx-auto">
+                    <div className="bg-gray-800 rounded-lg p-8 border border-gray-700">
+                      <div className="w-20 h-20 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                        <Zap className="w-10 h-10 text-white" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-100 mb-2">
+                        {showArchived ? 'No archived tasks' : 'Welcome to TaskHub!'}
+                      </h3>
+                      <p className="text-gray-400 mb-4">
+                        {showArchived 
+                          ? 'Your archived tasks will appear here' 
+                          : 'Start organizing your work by creating your first task above'}
+                      </p>
+                      {!showArchived && (
+                        <button
+                          onClick={() => document.querySelector('input[placeholder="Add a new task..."]')?.focus()}
+                          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded transition-colors"
+                        >
+                          Create First Task
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 )}
-              </div>
-            </div>
+              </>
+            )
+          ) : (
+            <GoalsView />
           )}
         </main>
       </div>
@@ -1288,7 +1767,98 @@ const addTodo = async () => {
         
         /* Storm Background */
         .storm-bg {
-          background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0a 100%);
+          background: 
+            linear-gradient(to bottom, rgba(16, 16, 30, 0.9) 0%, transparent 50%, rgba(10, 10, 10, 0.9) 100%),
+            radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0a 100%);
+          position: relative;
+        }
+        
+        /* Storm Clouds Effect */
+        .storm-clouds {
+          background-image: 
+            radial-gradient(ellipse at top left, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+            radial-gradient(ellipse at top right, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+            radial-gradient(ellipse at bottom left, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
+            radial-gradient(ellipse at bottom right, rgba(99, 102, 241, 0.05) 0%, transparent 50%);
+          animation: storm-clouds-move 20s ease-in-out infinite;
+        }
+        
+        @keyframes storm-clouds-move {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          25% { transform: translate(-20px, 10px) scale(1.1); }
+          50% { transform: translate(20px, -10px) scale(0.95); }
+          75% { transform: translate(-10px, -20px) scale(1.05); }
+        }
+        
+        /* Background Lightning Bolts */
+        .lightning-bg {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          opacity: 0;
+          background: linear-gradient(to bottom, transparent 0%, rgba(139, 92, 246, 0.4) 50%, transparent 100%);
+          filter: blur(2px);
+        }
+        
+        .lightning-bg-1 {
+          left: 10%;
+          width: 2px;
+          animation: lightning-flash-bg 4s ease-in-out infinite;
+        }
+        
+        .lightning-bg-2 {
+          left: 30%;
+          width: 3px;
+          animation: lightning-flash-bg 4s ease-in-out infinite 0.5s;
+          transform: rotate(5deg);
+        }
+        
+        .lightning-bg-3 {
+          right: 20%;
+          width: 2px;
+          animation: lightning-flash-bg 4s ease-in-out infinite 1s;
+          transform: rotate(-5deg);
+        }
+        
+        .lightning-bg-4 {
+          left: 60%;
+          width: 4px;
+          animation: lightning-flash-bg 4s ease-in-out infinite 1.5s;
+          transform: rotate(10deg);
+        }
+        
+        .lightning-bg-5 {
+          right: 40%;
+          width: 2px;
+          animation: lightning-flash-bg 4s ease-in-out infinite 2s;
+          transform: rotate(-10deg);
+        }
+        
+        @keyframes lightning-flash-bg {
+          0%, 90%, 100% {
+            opacity: 0;
+            transform: translateY(-100vh) scaleY(0.5);
+          }
+          92% {
+            opacity: 0.3;
+            transform: translateY(0) scaleY(1);
+          }
+          94% {
+            opacity: 0.6;
+            transform: translateY(50vh) scaleY(1.2);
+          }
+          95% {
+            opacity: 0.2;
+            transform: translateY(50vh) scaleY(1.2);
+          }
+          96% {
+            opacity: 0.8;
+            transform: translateY(100vh) scaleY(1.5);
+          }
+          98% {
+            opacity: 0;
+            transform: translateY(100vh) scaleY(1.5);
+          }
         }
         
         /* Lightning Bolts for Loader */
@@ -1305,6 +1875,33 @@ const addTodo = async () => {
           background: linear-gradient(to bottom, transparent, #8b5cf6, transparent);
           opacity: 0;
           filter: blur(1px);
+          box-shadow: 0 0 10px #8b5cf6, 0 0 20px #8b5cf6;
+        }
+        
+        .lightning::after {
+          content: '';
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(to bottom, transparent, white, transparent);
+          opacity: 0.5;
+        }
+        
+        /* Zigzag lightning effect */
+        .lightning::before {
+          content: '';
+          position: absolute;
+          left: -10px;
+          top: 30%;
+          width: 20px;
+          height: 20px;
+          background: #8b5cf6;
+          opacity: 0.8;
+          transform: rotate(45deg);
+          box-shadow: 
+            10px 10px 0 #8b5cf6,
+            20px 20px 0 #8b5cf6;
+          filter: blur(2px);
         }
         
         .lightning-1 {
@@ -1333,14 +1930,178 @@ const addTodo = async () => {
           }
         }
         
+        /* Flash effect during lightning */
+        .storm-bg::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
+          opacity: 0;
+          animation: lightning-flash-screen 3s ease-in-out infinite;
+          pointer-events: none;
+          z-index: 10;
+        }
+        
+        .storm-bg::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: white;
+          opacity: 0;
+          animation: white-flash 3s ease-in-out infinite;
+          pointer-events: none;
+          z-index: 9;
+        }
+        
+        @keyframes lightning-flash-screen {
+          0%, 90%, 100% { opacity: 0; }
+          95% { opacity: 1; }
+        }
+        
+        @keyframes white-flash {
+          0%, 94.5%, 96%, 100% { opacity: 0; }
+          95% { opacity: 0.1; }
+        }
+        
+        /* Rain Effect */
+        .rain-container {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          pointer-events: none;
+          z-index: 5;
+        }
+        
+        .rain {
+          position: absolute;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-image: 
+            linear-gradient(to bottom, transparent 0%, rgba(255, 255, 255, 0.1) 75%, rgba(255, 255, 255, 0.2) 100%);
+          background-size: 2px 100px;
+          background-repeat: repeat;
+          animation: rain-fall 0.5s linear infinite;
+          opacity: 0.3;
+        }
+        
+        .rain::before {
+          content: '';
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          background-image: 
+            linear-gradient(to bottom, transparent 0%, rgba(255, 255, 255, 0.1) 75%, rgba(255, 255, 255, 0.2) 100%);
+          background-size: 2px 100px;
+          background-repeat: repeat;
+          animation: rain-fall 0.7s linear infinite;
+          left: 50%;
+          opacity: 0.2;
+        }
+        
+        @keyframes rain-fall {
+          0% {
+            background-position: 0 0;
+          }
+          100% {
+            background-position: 0 100px;
+          }
+        }
+        
+        /* Storm icon glow */
+        .storm-icon {
+          animation: icon-storm-glow 3s ease-in-out infinite;
+        }
+        
+        @keyframes icon-storm-glow {
+          0%, 94%, 100% { 
+            box-shadow: 
+              0 0 20px rgba(139, 92, 246, 0.5),
+              0 0 40px rgba(139, 92, 246, 0.3),
+              0 0 60px rgba(139, 92, 246, 0.1);
+          }
+          95% { 
+            box-shadow: 
+              0 0 40px rgba(139, 92, 246, 1),
+              0 0 80px rgba(139, 92, 246, 0.8),
+              0 0 120px rgba(139, 92, 246, 0.6),
+              0 0 160px rgba(139, 92, 246, 0.4);
+          }
+        }
+        
+        /* Random lightning flashes */
+        .random-flash {
+          position: absolute;
+          width: 200px;
+          height: 200px;
+          background: radial-gradient(circle, rgba(139, 92, 246, 0.8) 0%, transparent 70%);
+          opacity: 0;
+          filter: blur(20px);
+          pointer-events: none;
+        }
+        
+        .random-flash-1 {
+          top: 20%;
+          left: 15%;
+          animation: random-lightning 5s ease-in-out infinite 1.5s;
+        }
+        
+        .random-flash-2 {
+          bottom: 30%;
+          right: 20%;
+          animation: random-lightning 5s ease-in-out infinite 3s;
+        }
+        
+        .random-flash-3 {
+          top: 50%;
+          right: 40%;
+          animation: random-lightning 5s ease-in-out infinite 4.2s;
+        }
+        
+        @keyframes random-lightning {
+          0%, 95%, 100% { opacity: 0; transform: scale(0.5); }
+          96% { opacity: 0.6; transform: scale(1); }
+          97% { opacity: 0; transform: scale(1.2); }
+          98% { opacity: 0.4; transform: scale(0.8); }
+        }
+        
+        /* Thunder rumble effect */
+        .storm-loader-container {
+          animation: thunder-rumble 3s ease-in-out infinite;
+        }
+        
+        @keyframes thunder-rumble {
+          0%, 94%, 98%, 100% { transform: translate(0, 0); }
+          95% { transform: translate(-1px, 1px); }
+          96% { transform: translate(1px, -1px); }
+          97% { transform: translate(-1px, 0); }
+        }
+        
         /* Loading Progress Animation */
         .lightning-progress {
-          animation: progress-fill 2s ease-out forwards;
+          animation: progress-fill 4.5s ease-out forwards, progress-glow 1s ease-in-out infinite alternate;
+          box-shadow: 
+            0 0 10px rgba(139, 92, 246, 0.5),
+            0 0 20px rgba(139, 92, 246, 0.3);
         }
         
         @keyframes progress-fill {
           0% { width: 0%; }
           100% { width: 100%; }
+        }
+        
+        @keyframes progress-glow {
+          0% { 
+            box-shadow: 
+              0 0 10px rgba(139, 92, 246, 0.5),
+              0 0 20px rgba(139, 92, 246, 0.3);
+          }
+          100% { 
+            box-shadow: 
+              0 0 20px rgba(139, 92, 246, 0.8),
+              0 0 30px rgba(139, 92, 246, 0.6),
+              0 0 40px rgba(139, 92, 246, 0.4);
+          }
         }
         
         /* Charging Progress Bar */
