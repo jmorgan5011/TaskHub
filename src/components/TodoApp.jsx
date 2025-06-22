@@ -39,15 +39,15 @@ const TodoApp = () => {
   const [newComment, setNewComment] = useState('');
   const [commentingTask, setCommentingTask] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [todos, setTodos] = useState([]);
   const [goals, setGoals] = useState([]);
   const [newTodo, setNewTodo] = useState('');
-  const [newGoal, setNewGoal] = useState('');
   const [toasts, setToasts] = useState([]);
   const [deletedTodos, setDeletedTodos] = useState([]);
   const [lightningTasks, setLightningTasks] = useState(new Set());
   const [showStormLoader, setShowStormLoader] = useState(true);
+  const [savingTask, setSavingTask] = useState(false);
+  const [savingGoal, setSavingGoal] = useState(false);
 
   const categories = ['Digital Marketing', 'SEO', 'Business Intelligence', 'Analytics', 'Websites', 'Admin', 'Misc'];
   const priorities = ['Low', 'Medium', 'High', 'Critical'];
@@ -76,7 +76,7 @@ const TodoApp = () => {
 
   // Load todos and goals from memory (simulated localStorage) on mount
   useEffect(() => {
-    const loadData = () => {
+    const loadData = async () => {
       try {
         // Simulate loading with some sample data
         const sampleTodos = [
@@ -131,14 +131,19 @@ const TodoApp = () => {
           }
         ];
         
+        // Wait for storm loader to finish
+        await new Promise(resolve => setTimeout(resolve, 4500));
+        
         setTodos(sampleTodos);
         setGoals(sampleGoals);
+        setLoading(false);
+        
+        // Hide storm loader after data is loaded
+        setTimeout(() => setShowStormLoader(false), 500);
       } catch (error) {
         console.error('Error loading data:', error);
-      } finally {
         setLoading(false);
-        // Hide storm loader after a delay
-        setTimeout(() => setShowStormLoader(false), 5000);
+        setShowStormLoader(false);
       }
     };
 
@@ -167,7 +172,7 @@ const TodoApp = () => {
   // Add todo
   const addTodo = async () => {
     if (newTodo.trim()) {
-      setSaving(true);
+      setSavingTask(true);
 
       let newTask;
       if (sortBy === 'manual') {
@@ -219,18 +224,18 @@ const TodoApp = () => {
       addToast('Task added successfully!');
 
       // Simulate save delay
-      setTimeout(() => setSaving(false), 300);
+      setTimeout(() => setSavingTask(false), 300);
     }
   };
 
-  // Add goal
-  const addGoal = async () => {
-    if (newGoal.trim()) {
-      setSaving(true);
+  // Add goal callback
+  const onAddGoal = async (goalTitle) => {
+    if (goalTitle.trim()) {
+      setSavingGoal(true);
       
       const goal = {
         id: Date.now().toString(),
-        title: newGoal,
+        title: goalTitle,
         category: 'Digital Marketing',
         timeframe: 'This Quarter',
         progress: 0,
@@ -241,11 +246,12 @@ const TodoApp = () => {
       };
 
       setGoals(prev => [goal, ...prev]);
-      setNewGoal('');
       addToast('Goal added successfully! 🎯');
       
-      setTimeout(() => setSaving(false), 300);
+      setTimeout(() => setSavingGoal(false), 300);
+      return true; // Signal success
     }
+    return false;
   };
 
   // Update todo
@@ -660,7 +666,9 @@ const TodoApp = () => {
           Charging TaskHub...
         </h2>
         <div className="w-64 h-2 bg-gray-700 rounded-full overflow-hidden mx-auto shadow-inner">
-          <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full lightning-progress shadow-lg"></div>
+          <div 
+            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full lightning-progress shadow-lg"
+          ></div>
         </div>
       </div>
     </div>
@@ -697,8 +705,8 @@ const TodoApp = () => {
     };
   };
 
-  // Reports View Component
-  const ReportsView = () => {
+  // Reports View Component - Memoized
+  const ReportsView = React.memo(() => {
     const data = getReportData();
     
     return (
@@ -782,13 +790,40 @@ const TodoApp = () => {
         </div>
       </div>
     );
-  };
+  });
 
-  // Goal Card Component
-  const GoalCard = ({ goal }) => {
+  // Goal Card Component - Memoized
+  const GoalCard = React.memo(({ 
+    goal, 
+    updateGoal, 
+    deleteGoal, 
+    addMilestone, 
+    toggleMilestone,
+    categories,
+    goalTimeframes,
+    getCategoryColor
+  }) => {
     const [showMilestones, setShowMilestones] = useState(false);
     const [newMilestone, setNewMilestone] = useState('');
     const [editingGoal, setEditingGoal] = useState(false);
+    const [editingTitle, setEditingTitle] = useState(goal.title);
+    
+    // Update local title when goal prop changes
+    useEffect(() => {
+      setEditingTitle(goal.title);
+    }, [goal.title]);
+    
+    const handleTitleSave = () => {
+      if (editingTitle.trim() && editingTitle !== goal.title) {
+        updateGoal(goal.id, { title: editingTitle.trim() });
+      }
+      setEditingGoal(false);
+    };
+    
+    const handleTitleCancel = () => {
+      setEditingTitle(goal.title);
+      setEditingGoal(false);
+    };
     
     return (
       <div className={`bg-gray-800 rounded-lg border border-gray-700 hover:border-purple-500/50 transition-all relative overflow-hidden ${goal.completed ? 'opacity-75' : ''}`}>
@@ -807,10 +842,16 @@ const TodoApp = () => {
               {editingGoal ? (
                 <input
                   type="text"
-                  value={goal.title}
-                  onChange={(e) => updateGoal(goal.id, { title: e.target.value })}
-                  onBlur={() => setEditingGoal(false)}
-                  onKeyPress={(e) => e.key === 'Enter' && setEditingGoal(false)}
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  onBlur={handleTitleSave}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleTitleSave();
+                    } else if (e.key === 'Escape') {
+                      handleTitleCancel();
+                    }
+                  }}
                   className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1 text-gray-100 focus:outline-none focus:border-purple-500"
                   autoFocus
                 />
@@ -894,6 +935,7 @@ const TodoApp = () => {
                     }}
                     placeholder="Add milestone..."
                     className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-gray-100 focus:outline-none focus:border-purple-500"
+                    spellCheck={false}
                   />
                   <button
                     onClick={() => {
@@ -943,10 +985,22 @@ const TodoApp = () => {
         </div>
       </div>
     );
-  };
+  });
 
-  // Goals View
-  const GoalsView = () => {
+  // Goals View - Memoized to prevent re-renders
+  const GoalsView = React.memo(({ 
+    goals, 
+    updateGoal, 
+    deleteGoal, 
+    onAddGoal, 
+    savingGoal, 
+    addMilestone, 
+    toggleMilestone,
+    categories,
+    goalTimeframes,
+    getCategoryColor
+  }) => {
+    const [newGoal, setNewGoal] = useState('');
     const activeGoals = goals.filter(g => !g.completed);
     const completedGoals = goals.filter(g => g.completed);
     
@@ -956,6 +1010,15 @@ const TodoApp = () => {
           goals.reduce((sum, goal) => sum + (goal.completed ? 100 : goal.progress), 0) / goals.length
         )
       : 0;
+    
+    const handleAddGoal = async () => {
+      if (newGoal.trim()) {
+        const success = await onAddGoal(newGoal);
+        if (success) {
+          setNewGoal('');
+        }
+      }
+    };
     
     return (
       <div className="space-y-6 max-w-4xl mx-auto">
@@ -1025,17 +1088,24 @@ const TodoApp = () => {
               type="text"
               value={newGoal}
               onChange={(e) => setNewGoal(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addGoal()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleAddGoal();
+                }
+              }}
               placeholder="Add a new goal..."
               className="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 text-gray-100 placeholder-gray-400 focus:outline-none focus:border-purple-500"
-              disabled={saving}
+              disabled={savingGoal}
+              autoComplete="off"
+              spellCheck={false}
             />
             <button
-              onClick={addGoal}
-              disabled={saving}
+              onClick={handleAddGoal}
+              disabled={savingGoal || !newGoal.trim()}
               className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white font-medium py-2 px-6 rounded transition-colors flex items-center gap-2"
             >
-              {saving ? (
+              {savingGoal ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <Target className="w-5 h-5" />
@@ -1054,7 +1124,17 @@ const TodoApp = () => {
           {activeGoals.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2">
               {activeGoals.map(goal => (
-                <GoalCard key={goal.id} goal={goal} />
+                <GoalCard 
+                  key={goal.id} 
+                  goal={goal}
+                  updateGoal={updateGoal}
+                  deleteGoal={deleteGoal}
+                  addMilestone={addMilestone}
+                  toggleMilestone={toggleMilestone}
+                  categories={categories}
+                  goalTimeframes={goalTimeframes}
+                  getCategoryColor={getCategoryColor}
+                />
               ))}
             </div>
           ) : (
@@ -1074,16 +1154,26 @@ const TodoApp = () => {
             </h2>
             <div className="grid gap-4 md:grid-cols-2">
               {completedGoals.map(goal => (
-                <GoalCard key={goal.id} goal={goal} />
+                <GoalCard 
+                  key={goal.id} 
+                  goal={goal}
+                  updateGoal={updateGoal}
+                  deleteGoal={deleteGoal}
+                  addMilestone={addMilestone}
+                  toggleMilestone={toggleMilestone}
+                  categories={categories}
+                  goalTimeframes={goalTimeframes}
+                  getCategoryColor={getCategoryColor}
+                />
               ))}
             </div>
           </div>
         )}
       </div>
     );
-  };
+  });
 
-  const TaskCard = ({ todo, isListView = false, index = 0, totalCount = 0 }) => {
+  const TaskCard = React.memo(({ todo, isListView = false, index = 0, totalCount = 0 }) => {
     const isExpanded = expandedTasks.has(todo.id);
     const isOverdue = new Date(todo.dueDate) < new Date() && todo.status !== 'Done';
     const daysUntilDue = Math.ceil((new Date(todo.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
@@ -1386,18 +1476,30 @@ const TodoApp = () => {
                           type="text"
                           value={newSubtask}
                           onChange={(e) => setNewSubtask(e.target.value)}
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
                               e.preventDefault();
-                              addSubtask(todo.id);
+                              e.stopPropagation();
+                              if (newSubtask.trim()) {
+                                addSubtask(todo.id);
+                              }
+                            } else if (e.key === 'Escape') {
+                              setNewSubtask('');
+                              setAddingSubtaskTo(null);
                             }
                           }}
                           placeholder="Add subtask..."
                           className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-100 focus:outline-none focus:border-purple-500"
                           autoFocus
+                          autoComplete="off"
+                          spellCheck={false}
                         />
                         <button
-                          onClick={() => addSubtask(todo.id)}
+                          onClick={() => {
+                            if (newSubtask.trim()) {
+                              addSubtask(todo.id);
+                            }
+                          }}
                           className="text-purple-400 hover:text-purple-300"
                         >
                           <Plus className="w-4 h-4" />
@@ -1499,7 +1601,7 @@ const TodoApp = () => {
         </div>
       </div>
     );
-  };
+  });
 
   const ListView = () => {
     // Sort displayTodos by order when in manual sort mode
@@ -1516,22 +1618,27 @@ const TodoApp = () => {
     );
   };
 
-  if (loading && !showStormLoader) {
+  if (loading || showStormLoader) {
     return (
-      <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading your tasks...</p>
-        </div>
-      </div>
+      <>
+        {/* Storm Loader */}
+        {showStormLoader && <StormLoader />}
+        
+        {/* Fallback Loader */}
+        {!showStormLoader && loading && (
+          <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto mb-4" />
+              <p className="text-gray-400">Loading your tasks...</p>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 
   return (
     <div className="min-h-screen bg-zinc-900 text-gray-100 p-4 md:p-6 lg:p-8">
-      {/* Storm Loader */}
-      {showStormLoader && <StormLoader />}
-      
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map(toast => (
@@ -1672,17 +1779,31 @@ const TodoApp = () => {
                   type="text"
                   value={newTodo}
                   onChange={(e) => setNewTodo(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addTodo()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (newTodo.trim()) {
+                        addTodo();
+                      }
+                    }
+                  }}
                   placeholder="Add a new task..."
                   className="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 text-gray-100 placeholder-gray-400 focus:outline-none focus:border-purple-500"
-                  disabled={saving}
+                  disabled={savingTask}
+                  autoComplete="off"
+                  spellCheck={false}
                 />
                 <button
-                  onClick={addTodo}
-                  disabled={saving}
+                  onClick={() => {
+                    if (newTodo.trim()) {
+                      addTodo();
+                    }
+                  }}
+                  disabled={savingTask || !newTodo.trim()}
                   className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white font-medium py-2 px-6 rounded transition-colors flex items-center gap-2"
                 >
-                  {saving ? (
+                  {savingTask ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <Plus className="w-5 h-5" />
@@ -1732,12 +1853,23 @@ const TodoApp = () => {
               </>
             )
           ) : (
-            <GoalsView />
+            <GoalsView 
+              goals={goals}
+              updateGoal={updateGoal}
+              deleteGoal={deleteGoal}
+              onAddGoal={onAddGoal}
+              savingGoal={savingGoal}
+              addMilestone={addMilestone}
+              toggleMilestone={toggleMilestone}
+              categories={categories}
+              goalTimeframes={goalTimeframes}
+              getCategoryColor={getCategoryColor}
+            />
           )}
         </main>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes slide-in-right {
           from {
             transform: translateX(100%);
@@ -2079,15 +2211,16 @@ const TodoApp = () => {
         
         /* Loading Progress Animation */
         .lightning-progress {
-          animation: progress-fill 4.5s ease-out forwards, progress-glow 1s ease-in-out infinite alternate;
+          transform-origin: left;
+          animation: progress-fill-scale 4.5s ease-out forwards, progress-glow 1s ease-in-out infinite alternate;
           box-shadow: 
             0 0 10px rgba(139, 92, 246, 0.5),
             0 0 20px rgba(139, 92, 246, 0.3);
         }
         
-        @keyframes progress-fill {
-          0% { width: 0%; }
-          100% { width: 100%; }
+        @keyframes progress-fill-scale {
+          from { transform: scaleX(0); }
+          to { transform: scaleX(1); }
         }
         
         @keyframes progress-glow {
